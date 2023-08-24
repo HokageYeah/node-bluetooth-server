@@ -1,0 +1,31 @@
+{
+  "name": "node-bluetooth-server",
+  "version": "1.0.0",
+  "description": "操作智能设备",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "npm run dev",
+    "dev": "node build.js",
+    "server": "node server",
+    "build": "mode=production node build.js",
+    "prepublishOnly": "npm run build",
+    "lint": "eslint --ext .js,.vue src",
+    "lint:fix": "eslint --ext .js,.vue src --fix",
+    "test": "jest"
+  },
+  "keywords": [],
+  "author": "HokageYeah",
+  "license": "MIT",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^6.4.1",
+    "@typescript-eslint/parser": "^6.4.1",
+    "esbuild": "^0.19.2",
+    "eslint": "^8.47.0",
+    "eslint-config-sprite": "^1.0.6",
+    "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "node-bluetooth-serial-port": "^2.2.7"
+  }
+}

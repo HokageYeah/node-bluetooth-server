@@ -1,0 +1,91 @@
+<meta charset="UTF-8">
+<button id="connector">连接设备</button>
+<button id="switcher">开关</button>
+<select id="effect">
+    <option value="none">无特效</option>
+    <option value="0x00">闪烁</option>
+    <option value="0x01">呼吸</option>
+    <option value="0x03">彩虹</option>
+</select>
+<input type="color" id="palette" value="#ffffff"></input>
+<input type="range" id="brightness" value="0" min="0" max="100" step="1"></input>
+
+<script>
+let service = null;
+
+function parseColorString(colorStr) {
+    const rgb = colorStr.match(/[0-9a-f]{2}/ig).map((c) => parseInt(c, 16));
+    return new Uint8Array(rgb);
+}
+
+
+let color = parseColorString(palette.value);
+let lightOn = false;
+let characteristic = null;
+let effectCharacteristic = null;
+let bright = 0;
+let colorEffect = 'none';
+
+const speedMap = {
+    '0x00': 0x1f,
+    '0x01': 0x03,
+    '0x03': 0x1f,
+}
+
+async function updateColorEffect() {
+    if(!characteristic || !effectCharacteristic) return;
+    if(!lightOn) {
+        characteristic.writeValue(new Uint8Array([0, 0, 0, 0]));
+    }else if(colorEffect === 'none') {
+        characteristic.writeValue(new Uint8Array([bright, ...color]));
+    } else {
+        const speed = speedMap[colorEffect];
+        effectCharacteristic.writeValue(new Uint8Array([
+            bright, ...color,parseInt(colorEffect, 16), 0x00, speed, 0x00,]));
+  }
+}
+
+effect.addEventListener('change', ({target}) => {
+    colorEffect = target.value;
+    updateColorEffect();
+});
+palette.addEventListener('change', ({target}) => {
+    color = parseColorString(target.value);
+    updateColorEffect();
+});
+
+brightness.addEventListener('change', ({target}) => {
+    bright = parseInt(target.value);
+    updateColorEffect();
+});
+
+// 匹配链接蓝牙设备
+// Web Bluetooth API 控制蓝牙设备
+/**
+蓝牙设备分为两类，一类是 GATT 协议的低功耗设备，这些设备可以通过标准的 Web Bluetooth API 进行通信，而 Chrome 浏览器已经支持了这个 API，
+所以我们可以直接使用这个 API 进行通信。另一类是 SPP 协议的设备，这些设备不能直接使用 Web Bluetooth API 进行通信，我们需要通过 Node.js 来实现一个蓝牙串口服务，然后通过这个服务来进行通信。
+
+Node.js 实现蓝牙串口服务，我们可以使用现成的node-bluetooth-serial-port模块。通过这个模块，我们可以启动一个蓝牙通信服务。
+但是，我们的 Web 需要访问这个服务，还需要通过一个 HTTP 协议的接口进行通信，所以我们需要在 Node.js 中启动一个 HTTP 服务，然后通过这个 HTTP 服务来访问蓝牙串口服务。
+*/
+connector.onclick = async () => {
+    const device = await navigator.bluetooth.requestDevice({
+        filters: [{namePrefix: 'PLAYBULB'}],
+        optionalServices: [0xff00, 0xff02, 0xff0f],
+  });
+  const server = await device.gatt.connect();
+
+  service = (await server.getPrimaryServices())[0];
+
+  characteristic = await service.getCharacteristic(0xfffc);
+  effectCharacteristic = await service.getCharacteristic(0xfffb);
+
+  updateColorEffect();
+
+  switcher.onclick = async() => {
+    lightOn = !lightOn;
+    updateColorEffect();
+  };
+};
+</script>
+
